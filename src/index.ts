@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import express from "express";
 import { z } from "zod";
 
 const BASE_URL = "https://rozhodnuti.justice.cz";
@@ -74,8 +76,10 @@ const server = new McpServer({
   version: "1.0.0",
 });
 
+function registerTools(srv: McpServer) {
+
 // Tool 1: List available years
-server.tool(
+srv.tool(
   "list_years",
   "List all available years with court decision counts from the Czech court decisions database (rozhodnuti.justice.cz)",
   {},
@@ -98,7 +102,7 @@ server.tool(
 );
 
 // Tool 2: List months in a year
-server.tool(
+srv.tool(
   "list_months",
   "List all months with court decision counts for a given year",
   {
@@ -123,7 +127,7 @@ server.tool(
 );
 
 // Tool 3: List days in a month
-server.tool(
+srv.tool(
   "list_days",
   "List all days with court decision counts for a given year and month",
   {
@@ -152,7 +156,7 @@ server.tool(
 );
 
 // Tool 4: List decisions on a specific day
-server.tool(
+srv.tool(
   "list_decisions",
   "List all court decisions published on a specific date. Returns basic info including file reference (spisová značka), ECLI, court name, and link to detail.",
   {
@@ -200,7 +204,7 @@ server.tool(
 );
 
 // Tool 5: Get decision detail by ID
-server.tool(
+srv.tool(
   "get_decision",
   "Get the full detail of a specific court decision by its document ID, including the ruling text, keywords, and referenced legal provisions.",
   {
@@ -240,7 +244,7 @@ server.tool(
 );
 
 // Tool 6: Search decisions via the web search endpoint
-server.tool(
+srv.tool(
   "search_decisions",
   "Search court decisions by text query, file reference (spisová značka), court name, or date range. Uses the web search interface of rozhodnuti.justice.cz.",
   {
@@ -296,11 +300,45 @@ server.tool(
   }
 );
 
+} // end registerTools
+
 // Start the server
 async function main() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error("MCP server databaze-rozhodnuti started");
+  const mode = process.env.MCP_TRANSPORT || "stdio";
+
+  if (mode === "http") {
+    const app = express();
+    app.use(express.json());
+
+    // Health check
+    app.get("/health", (_req, res) => {
+      res.json({ status: "ok" });
+    });
+
+    // Stateless HTTP transport - each request gets its own transport/server
+    app.all("/mcp", async (req, res) => {
+      const httpTransport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: undefined, // stateless
+      });
+      const httpServer = new McpServer({
+        name: "mcp-server-databaze-rozhodnuti",
+        version: "1.0.0",
+      });
+      registerTools(httpServer);
+      await httpServer.connect(httpTransport);
+      await httpTransport.handleRequest(req, res, req.body);
+    });
+
+    const port = parseInt(process.env.PORT || "3000", 10);
+    app.listen(port, "0.0.0.0", () => {
+      console.error(`MCP HTTP server listening on 0.0.0.0:${port}`);
+    });
+  } else {
+    registerTools(server);
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    console.error("MCP server databaze-rozhodnuti started (stdio)");
+  }
 }
 
 main().catch((error) => {

@@ -43,6 +43,33 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
 claude mcp add databaze-rozhodnuti node /path/to/mcp-server-databaze-rozhodnuti/build/index.js
 ```
 
+## Deploy to Railway
+
+1. Push this repo to GitHub
+2. Go to [railway.com](https://railway.com) and create a new project from the GitHub repo
+3. Railway will automatically detect the `Dockerfile` and deploy
+4. The env variable `MCP_TRANSPORT=http` is set in the Dockerfile, Railway assigns the `PORT` automatically
+5. Once deployed, your MCP endpoint will be at `https://<your-app>.up.railway.app/mcp`
+
+### Connect from Claude Desktop (remote)
+
+```json
+{
+  "mcpServers": {
+    "databaze-rozhodnuti": {
+      "type": "streamable-http",
+      "url": "https://<your-app>.up.railway.app/mcp"
+    }
+  }
+}
+```
+
+### Connect from Claude Code (remote)
+
+```bash
+claude mcp add databaze-rozhodnuti --transport http https://<your-app>.up.railway.app/mcp
+```
+
 ## API Source
 
 This server uses the official Open Data API at `https://rozhodnuti.justice.cz/api/opendata`.
