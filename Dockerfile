@@ -6,6 +6,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
 COPY build ./build
+COPY public ./public
 
 ENV MCP_TRANSPORT=http
 ENV PORT=3000

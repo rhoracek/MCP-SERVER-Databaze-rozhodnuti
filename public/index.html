@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Databáze rozhodnutí - Analytické nástroje</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #242834;
+      --border: #2e3347;
+      --text: #e2e4ed;
+      --text-muted: #8b8fa3;
+      --primary: #6c8cff;
+      --primary-hover: #8ba3ff;
+      --accent-green: #4ade80;
+      --accent-amber: #fbbf24;
+      --accent-red: #f87171;
+      --radius: 12px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    header {
+      padding: 32px 0 24px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 32px;
+    }
+
+    header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    header h1 span { color: var(--primary); }
+
+    header p {
+      color: var(--text-muted);
+      margin-top: 6px;
+      font-size: 15px;
+    }
+
+    .input-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 32px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .input-group {
+      flex: 1;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-group input:focus {
+      border-color: var(--primary);
+    }
+
+    .input-group input::placeholder {
+      color: var(--text-muted);
+      opacity: 0.6;
+    }
+
+    .tools-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .tool-btn {
+      padding: 14px 20px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: left;
+    }
+
+    .tool-btn:hover {
+      border-color: var(--primary);
+      background: rgba(108, 140, 255, 0.08);
+    }
+
+    .tool-btn:active {
+      transform: scale(0.98);
+    }
+
+    .tool-btn.loading {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .tool-btn .icon {
+      font-size: 20px;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .tool-btn .name {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .tool-btn .desc {
+      font-weight: 400;
+      font-size: 12px;
+      color: var(--text-muted);
+      display: block;
+    }
+
+    .results {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      padding-bottom: 64px;
+    }
+
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .result-header .badge {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-provisions { background: rgba(74, 222, 128, 0.15); color: var(--accent-green); }
+    .badge-related { background: rgba(108, 140, 255, 0.15); color: var(--primary); }
+    .badge-summary { background: rgba(251, 191, 36, 0.15); color: var(--accent-amber); }
+    .badge-error { background: rgba(248, 113, 113, 0.15); color: var(--accent-red); }
+
+    .result-header .title {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .result-header .time {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .result-body {
+      padding: 20px;
+    }
+
+    .decision-meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .meta-item {
+      background: var(--surface2);
+      padding: 12px 16px;
+      border-radius: 8px;
+    }
+
+    .meta-item .meta-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .meta-item .meta-value {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin: 20px 0 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-title:first-child { margin-top: 0; }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tag {
+      padding: 5px 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+
+    .tag-provision { border-color: rgba(74, 222, 128, 0.3); }
+    .tag-citation { border-color: rgba(108, 140, 255, 0.3); }
+    .tag-keyword { border-color: rgba(251, 191, 36, 0.3); }
+
+    .text-block {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      font-size: 14px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .text-block.empty {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .summary-sections {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .summary-section {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .summary-section-header {
+      padding: 10px 16px;
+      background: var(--surface2);
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .summary-section-header .num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .summary-section-body {
+      padding: 16px;
+      font-size: 14px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      max-height: 250px;
+      overflow-y: auto;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+
+    .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+      .tools-grid { grid-template-columns: 1fr; }
+      .input-row { flex-direction: column; }
+      .decision-meta { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1><span>Databáze rozhodnutí</span> - Analytické nástroje</h1>
+      <p>Analýza rozhodnutí českých soudů z rozhodnuti.justice.cz</p>
+    </header>
+
+    <div class="input-section">
+      <div class="input-row" style="margin-bottom: 16px;">
+        <div class="input-group">
+          <label>ID dokumentu</label>
+          <input type="text" id="documentId" placeholder="Zadejte ID dokumentu z databáze rozhodnutí...">
+        </div>
+      </div>
+      <div class="tools-grid">
+        <button class="tool-btn" onclick="runTool('cited-provisions')" id="btn-provisions">
+          <span class="icon">&sect;</span>
+          <span class="name">Citovaná ustanovení</span>
+          <span class="desc">Extrahuje všechny &sect; z textu rozhodnutí</span>
+        </button>
+        <button class="tool-btn" onclick="runTool('related-decisions')" id="btn-related">
+          <span class="icon">&#x1F517;</span>
+          <span class="name">Související rozhodnutí</span>
+          <span class="desc">Najde citace, stejné paragrafy a typ věci</span>
+        </button>
+        <button class="tool-btn" onclick="runTool('summary')" id="btn-summary">
+          <span class="icon">&#x1F4CB;</span>
+          <span class="name">Souhrn pro soudce</span>
+          <span class="desc">Skutkový stav, právní otázka, závěr</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="results" id="results">
+      <div class="empty-state" id="empty-state">
+        <div class="icon">&sect;</div>
+        <p>Zadejte ID dokumentu a vyberte nástroj pro analýzu</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const resultsEl = document.getElementById('results');
+    const emptyState = document.getElementById('empty-state');
+
+    function hideEmpty() {
+      if (emptyState) emptyState.style.display = 'none';
+    }
+
+    async function runTool(tool) {
+      const docId = document.getElementById('documentId').value.trim();
+      if (!docId) {
+        alert('Zadejte ID dokumentu.');
+        return;
+      }
+
+      hideEmpty();
+
+      const btnMap = {
+        'cited-provisions': 'btn-provisions',
+        'related-decisions': 'btn-related',
+        'summary': 'btn-summary',
+      };
+      const btn = document.getElementById(btnMap[tool]);
+      btn.classList.add('loading');
+      btn.querySelector('.name').innerHTML = '<span class="spinner"></span> Načítám...';
+
+      const nameMap = {
+        'cited-provisions': 'Citovaná ustanovení',
+        'related-decisions': 'Související rozhodnutí',
+        'summary': 'Souhrn pro soudce',
+      };
+
+      try {
+        const res = await fetch(`/api/${tool}/${encodeURIComponent(docId)}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          addErrorCard(nameMap[tool], data.error || 'Neznámá chyba');
+          return;
+        }
+
+        if (tool === 'cited-provisions') renderProvisions(data);
+        else if (tool === 'related-decisions') renderRelated(data);
+        else if (tool === 'summary') renderSummary(data);
+
+      } catch (err) {
+        addErrorCard(nameMap[tool], err.message);
+      } finally {
+        btn.classList.remove('loading');
+        const originalNames = {
+          'btn-provisions': 'Citovaná ustanovení',
+          'btn-related': 'Související rozhodnutí',
+          'btn-summary': 'Souhrn pro soudce',
+        };
+        btn.querySelector('.name').textContent = originalNames[btnMap[tool]];
+      }
+    }
+
+    function addErrorCard(title, message) {
+      const card = document.createElement('div');
+      card.className = 'result-card';
+      card.innerHTML = `
+        <div class="result-header">
+          <span class="badge badge-error">Chyba</span>
+          <span class="title">${esc(title)}</span>
+          <span class="time">${now()}</span>
+        </div>
+        <div class="result-body">
+          <div class="text-block empty">${esc(message)}</div>
+        </div>`;
+      resultsEl.prepend(card);
+    }
+
+    function renderProvisions(data) {
+      const d = data.decision;
+      const card = document.createElement('div');
+      card.className = 'result-card';
+      card.innerHTML = `
+        <div class="result-header">
+          <span class="badge badge-provisions">&sect; Ustanovení</span>
+          <span class="title">${esc(d.spisovaZnacka)}</span>
+          <span class="time">${now()}</span>
+        </div>
+        <div class="result-body">
+          ${metaHtml(d)}
+          <div class="section-title">Z metadat (${data.metadataProvisions.length})</div>
+          <div class="tag-list">
+            ${data.metadataProvisions.map(p => `<span class="tag tag-provision">${esc(p)}</span>`).join('') || '<span style="color:var(--text-muted)">Žádná</span>'}
+          </div>
+          <div class="section-title">Z textu rozhodnutí (${data.textProvisions.length})</div>
+          <div class="tag-list">
+            ${data.textProvisions.map(p => `<span class="tag tag-provision">${esc(p)}</span>`).join('') || '<span style="color:var(--text-muted)">Žádná</span>'}
+          </div>
+          <div class="section-title">Celkem unikátních: ${data.allProvisions.length}</div>
+        </div>`;
+      resultsEl.prepend(card);
+    }
+
+    function renderRelated(data) {
+      const d = data.decision;
+      const card = document.createElement('div');
+      card.className = 'result-card';
+      card.innerHTML = `
+        <div class="result-header">
+          <span class="badge badge-related">&#x1F517; Související</span>
+          <span class="title">${esc(d.spisovaZnacka)}</span>
+          <span class="time">${now()}</span>
+        </div>
+        <div class="result-body">
+          ${metaHtml(d)}
+          <div class="section-title">Citovaná rozhodnutí (${data.citations.length})</div>
+          <div class="tag-list">
+            ${data.citations.map(c => `<span class="tag tag-citation">${esc(c)}</span>`).join('') || '<span style="color:var(--text-muted)">Žádné citace nenalezeny</span>'}
+          </div>
+          <div class="section-title">Sdílená právní ustanovení (${data.provisions.length})</div>
+          <div class="tag-list">
+            ${data.provisions.slice(0, 20).map(p => `<span class="tag tag-provision">${esc(p)}</span>`).join('')}
+            ${data.provisions.length > 20 ? `<span class="tag">+${data.provisions.length - 20} dalších</span>` : ''}
+          </div>
+          <div class="section-title">Typ věci</div>
+          <div class="tag-list">
+            <span class="tag">${esc(data.caseType || '?')} &mdash; ${esc(data.caseTypeName)}</span>
+          </div>
+          ${data.keywords.length > 0 ? `
+            <div class="section-title">Klíčová slova (${data.keywords.length})</div>
+            <div class="tag-list">
+              ${data.keywords.map(k => `<span class="tag tag-keyword">${esc(k)}</span>`).join('')}
+            </div>
+          ` : ''}
+        </div>`;
+      resultsEl.prepend(card);
+    }
+
+    function renderSummary(data) {
+      const d = data.decision;
+      const na = 'Nepodařilo se automaticky extrahovat.';
+      const card = document.createElement('div');
+      card.className = 'result-card';
+
+      const sections = [
+        { num: 1, title: 'Skutkový stav', text: data.skutkovyStav || na },
+        { num: 2, title: 'Právní otázka', text: data.pravniOtazka || na },
+        { num: 3, title: 'Závěr', text: data.zaver || na },
+      ];
+
+      card.innerHTML = `
+        <div class="result-header">
+          <span class="badge badge-summary">&#x1F4CB; Souhrn</span>
+          <span class="title">${esc(d.spisovaZnacka)}</span>
+          <span class="time">${now()}</span>
+        </div>
+        <div class="result-body">
+          <div class="decision-meta">
+            <div class="meta-item">
+              <div class="meta-label">Spisová značka</div>
+              <div class="meta-value">${esc(d.spisovaZnacka)}</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">ECLI</div>
+              <div class="meta-value">${esc(d.ecli)}</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Soud</div>
+              <div class="meta-value">${esc(d.nazevSoudu)}</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Datum</div>
+              <div class="meta-value">${esc(d.datumVydani)}</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Předmět</div>
+              <div class="meta-value">${esc(d.predmetRizeni || 'N/A')}</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Typ věci</div>
+              <div class="meta-value">${esc(data.caseType || '?')} (${esc(data.caseTypeName)})</div>
+            </div>
+          </div>
+
+          <div class="summary-sections">
+            ${sections.map(s => `
+              <div class="summary-section">
+                <div class="summary-section-header">
+                  <span class="num">${s.num}</span>
+                  ${esc(s.title)}
+                </div>
+                <div class="summary-section-body ${!s.text || s.text === na ? 'empty' : ''}">${esc(s.text)}</div>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="section-title">Relevantní ustanovení (${data.provisions.length})</div>
+          <div class="tag-list">
+            ${data.provisions.map(p => `<span class="tag tag-provision">${esc(p)}</span>`).join('') || '<span style="color:var(--text-muted)">Žádná</span>'}
+          </div>
+
+          <div class="section-title">Související judikáty (${data.citations.length})</div>
+          <div class="tag-list">
+            ${data.citations.map(c => `<span class="tag tag-citation">${esc(c)}</span>`).join('') || '<span style="color:var(--text-muted)">Žádné</span>'}
+          </div>
+
+          ${data.keywords.length > 0 ? `
+            <div class="section-title">Klíčová slova</div>
+            <div class="tag-list">
+              ${data.keywords.map(k => `<span class="tag tag-keyword">${esc(k)}</span>`).join('')}
+            </div>
+          ` : ''}
+        </div>`;
+      resultsEl.prepend(card);
+    }
+
+    function metaHtml(d) {
+      return `
+        <div class="decision-meta">
+          <div class="meta-item">
+            <div class="meta-label">ECLI</div>
+            <div class="meta-value">${esc(d.ecli)}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Soud</div>
+            <div class="meta-value">${esc(d.nazevSoudu)}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Datum</div>
+            <div class="meta-value">${esc(d.datumVydani)}</div>
+          </div>
+        </div>`;
+    }
+
+    function esc(s) {
+      const el = document.createElement('span');
+      el.textContent = s || '';
+      return el.innerHTML;
+    }
+
+    function now() {
+      return new Date().toLocaleTimeString('cs-CZ');
+    }
+
+    // Enter key triggers first tool
+    document.getElementById('documentId').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') runTool('summary');
+    });
+  </script>
+</body>
+</html>
