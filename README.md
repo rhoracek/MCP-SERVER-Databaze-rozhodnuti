@@ -14,6 +14,9 @@ Provides access to anonymized court decisions from Czech district, regional, and
 | `list_decisions` | List decisions published on a specific date |
 | `get_decision` | Get full detail of a decision by document ID |
 | `search_decisions` | Search decisions by text, file reference, court, or date range |
+| `get_cited_provisions` | Extract all legal provisions (§) cited in a decision |
+| `get_related_decisions` | Find related decisions by provisions, case type, and citations |
+| `summarize_decision_for_judge` | Structured summary: facts, legal question, conclusion, provisions, related case law |
 
 ## Setup
 
