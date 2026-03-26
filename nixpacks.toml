@@ -8,4 +8,4 @@ cmds = ["npm ci"]
 cmds = ["npm run build"]
 
 [start]
-cmd = "MCP_TRANSPORT=http node build/index.js"
+cmd = "node build/index.js"

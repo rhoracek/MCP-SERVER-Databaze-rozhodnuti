@@ -393,7 +393,8 @@ function registerWebRoutes(app: express.Application) {
 // --- Start ---
 
 async function main() {
-  const mode = process.env.MCP_TRANSPORT || "stdio";
+  // Auto-detect: if PORT is set (Railway/cloud) or MCP_TRANSPORT=http, use HTTP mode
+  const mode = process.env.MCP_TRANSPORT || (process.env.PORT ? "http" : "stdio");
 
   if (mode === "http") {
     const app = express();

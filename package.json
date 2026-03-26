@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "start": "MCP_TRANSPORT=http node build/index.js"
+    "start": "node build/index.js"
   },
   "files": [
     "build"
